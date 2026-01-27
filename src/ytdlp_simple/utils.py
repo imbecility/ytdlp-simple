@@ -157,7 +157,7 @@ async def run_subprocess(cmd: list[str], check: bool = False) -> tuple[int, str,
     """
     cmd = [str(c) for c in cmd if c]
 
-    logger.debug(f'running: {" ".join(cmd[:5])}...')
+    logger.info(f'running: "{" ".join(cmd)}"')
 
     process = await create_subprocess_exec(
         *cmd,

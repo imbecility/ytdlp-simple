@@ -69,7 +69,7 @@ def unpack(zip_path: Path, final_path: Path):
         if not files:
             raise RuntimeError(f'the archive "{str(zip_path.resolve())}" contains no files.')
         internal_path = Path(max(files, key=lambda info: info.file_size).filename)
-        extracted_path = Path(z.extract(str(internal_path), extract_dir))
+        extracted_path = Path(z.extract(internal_path.as_posix(), extract_dir))
 
     zip_path.unlink(missing_ok=True)
 
@@ -125,11 +125,11 @@ async def get_binary(bin_url: str, bin_path: Path, is_zipped: bool, force_update
         orig_path.chmod(mode | 0o111)
 
 
-async def get_binaries_async(parallel: bool = True) -> None:
+async def get_binaries_async(parallel: bool = False) -> None:
     tasks = [
         get_binary(
             bin_url=cfg['url'],
-            bin_path=BIN_PATH / name,
+            bin_path=get_bin(name, as_str=False),
             is_zipped=cfg['is_zipped'],
         )
         for name, cfg in BINARIES.items()
@@ -195,7 +195,7 @@ async def is_update_available(url: str, bin_path: Path) -> bool:
     return release_date > installed_date
 
 
-async def update_binaries_async(parallel: bool = True, force: bool = False) -> dict[str, bool]:
+async def update_binaries_async(parallel: bool = False, force: bool = False) -> dict[str, bool]:
     """
     check for updates and download newer versions of binaries.
 
@@ -218,7 +218,7 @@ async def update_binaries_async(parallel: bool = True, force: bool = False) -> d
         to_update = list(platform_bins.keys())
     else:
         async def check(name: str, cfg: dict) -> tuple[str, bool]:
-            return name, await is_update_available(cfg['url'], BIN_PATH / name)
+            return name, await is_update_available(cfg['url'], get_bin(name, as_str=False))
 
         if parallel:
             checks = await gather(*[check(n, c) for n, c in platform_bins.items()])
@@ -239,7 +239,7 @@ async def update_binaries_async(parallel: bool = True, force: bool = False) -> d
         try:
             await get_binary(
                 bin_url=cfg['url'],
-                bin_path=BIN_PATH / name,
+                bin_path=get_bin(name, as_str=False),
                 is_zipped=cfg['is_zipped'],
                 force_update=True,
             )
@@ -260,12 +260,12 @@ async def update_binaries_async(parallel: bool = True, force: bool = False) -> d
     return results
 
 
-def get_binaries_sync(parallel: bool = True):
+def get_binaries_sync(parallel: bool = False):
     from asyncio import run
     run(get_binaries_async(parallel))
 
 
-def update_binaries_sync(parallel: bool = True, force: bool = False):
+def update_binaries_sync(parallel: bool = False, force: bool = False):
     from asyncio import run
     run(update_binaries_async(parallel, force))
 

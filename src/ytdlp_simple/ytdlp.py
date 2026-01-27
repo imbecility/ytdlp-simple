@@ -15,7 +15,7 @@ def base_ytdlp_cmd(cookies_folder: Path | str, sponsorblock: bool = True) -> lis
 
     cmd.extend([
         '--cache-dir', tmp_dir_str,
-        '--rm-cache-dir',
+        # '--rm-cache-dir',
         '--no-abort-on-error',
         '--windows-filenames',
         '--no-part',
