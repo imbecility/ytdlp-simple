@@ -159,7 +159,7 @@ async def get_release_date(repo: str) -> datetime | None:
     """
     api_url = f'https://api.github.com/repos/{repo}/releases/latest'
     data, result = await fetch_json(api_url, logger=logger)
-
+    logger.info(f'  raw data type: {type(data)}')
     if result.success and data:
         if published := data.get('published_at'):
             # ISO format: "2024-01-15T10:30:00Z"
@@ -177,22 +177,32 @@ def get_installed_date(path: Path) -> datetime | None:
 
 
 async def is_update_available(url: str, bin_path: Path) -> bool:
-    """
-    check if newer release exists for the binary.
-    """
+    logger.info(f'checking update for: {bin_path}')
+
+    installed_date = get_installed_date(bin_path)
+    logger.info(f'  installed_date: {installed_date}')
+
+    if not installed_date:
+        logger.info(f'  → needs install (file missing)')
+        return True
+
     repo = extract_github_repo(url)
+    logger.info(f'  repo: {repo}')
+
     if not repo:
+        logger.info(f'  → skip (not github)')
         return False
 
     release_date = await get_release_date(repo)
+    logger.info(f'  release_date: {release_date}')
+
     if not release_date:
+        logger.info(f'  → skip (no release date)')
         return False
 
-    installed_date = get_installed_date(bin_path)
-    if not installed_date:
-        return True  # not installed
-
-    return release_date > installed_date
+    result = release_date > installed_date
+    logger.info(f'  → needs_update: {result}')
+    return result
 
 
 async def update_binaries_async(parallel: bool = False, force: bool = False) -> dict[str, bool]:

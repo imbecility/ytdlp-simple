@@ -34,7 +34,7 @@ def base_ytdlp_cmd(cookies_folder: Path | str, sponsorblock: bool = True) -> lis
         cmd.extend(['--plugin-dirs', plugins_dir_str])
 
     if bun_bin.exists():
-        cmd.extend(['--js-runtimes', f'bun:"{bun_bin_str}"'])
+        cmd.extend(['--js-runtimes', f'bun:{bun_bin_str}'])
 
     if sponsorblock:
         cmd.extend(['--sponsorblock-remove', 'all'])

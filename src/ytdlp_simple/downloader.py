@@ -447,15 +447,16 @@ class FileDownloader:
         return downloaded, file_hash
 
     async def _read_to_memory(
-        self,
-        response: HTTPResponse,
-        max_size: int | None = None
+            self,
+            response: HTTPResponse,
+            max_size: int | None = None
     ) -> bytes:
         """read response body into memory with size limit"""
         limit = max_size or self.config.max_memory_size
+        is_chunked = response.headers.get('transfer-encoding', '').lower() == 'chunked'
 
         content_length = response.headers.get('content-length')
-        if content_length:
+        if content_length and not is_chunked:
             expected_size = int(content_length)
             if expected_size > limit:
                 raise FatalError(
@@ -465,35 +466,62 @@ class FileDownloader:
         chunks: list[bytes] = []
         total_read = 0
 
-        while True:
-            try:
-                chunk = await wait_for(
-                    response.body_reader.read(self.config.chunk_size),
-                    timeout=self.config.read_timeout
-                )
-            except TimeoutError:
-                raise RetryableError(f'read timeout after {total_read} bytes')
-
-            if not chunk:
-                break
-
-            total_read += len(chunk)
-
-            if total_read > limit:
-                raise FatalError(
-                    f'content too large: exceeded limit of {limit} bytes'
-                )
-
-            chunks.append(chunk)
-
-            # progress callback
-            if self.config.progress_callback:
-                expected = int(content_length) if content_length else None
+        if is_chunked:
+            while True:
                 try:
-                    self.config.progress_callback(total_read, expected)
-                except Exception as e:
-                    if self.config.logger:
-                        self.config.logger.warning(f'progress callback error: {e}')
+                    size_line = await wait_for(
+                        response.body_reader.readline(),
+                        timeout=self.config.read_timeout
+                    )
+                    
+                    size_str = size_line.decode('ascii').strip().split(';')[0]
+                    chunk_size = int(size_str, 16)
+
+                    if chunk_size == 0:
+                        await response.body_reader.readline()
+                        break
+
+                    chunk_data = await wait_for(
+                        response.body_reader.readexactly(chunk_size),
+                        timeout=self.config.read_timeout
+                    )
+                    
+                    await response.body_reader.readline()
+
+                    total_read += len(chunk_data)
+                    if total_read > limit:
+                        raise FatalError(f'content too large: exceeded limit of {limit} bytes')
+
+                    chunks.append(chunk_data)
+
+                except TimeoutError:
+                    raise RetryableError(f'read timeout after {total_read} bytes')
+        else:
+            while True:
+                try:
+                    chunk = await wait_for(
+                        response.body_reader.read(self.config.chunk_size),
+                        timeout=self.config.read_timeout
+                    )
+                except TimeoutError:
+                    raise RetryableError(f'read timeout after {total_read} bytes')
+
+                if not chunk:
+                    break
+
+                total_read += len(chunk)
+                if total_read > limit:
+                    raise FatalError(f'content too large: exceeded limit of {limit} bytes')
+
+                chunks.append(chunk)
+
+                if self.config.progress_callback:
+                    expected = int(content_length) if content_length else None
+                    try:
+                        self.config.progress_callback(total_read, expected)
+                    except Exception as e:
+                        if self.config.logger:
+                            self.config.logger.warning(f'progress callback error: {e}')
 
         return b''.join(chunks)
 
