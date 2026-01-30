@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 [project]
 name = "ytdlp-simple"
-version = "0.0.4"
+version = "0.0.5"
 description = "Download videos and audio from YouTube and other platforms"
 readme = "README.md"
 license = "MIT"

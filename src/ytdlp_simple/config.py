@@ -44,11 +44,13 @@ BITRATE_PATTERN = re.compile(r'bitrate:\s*(\d+)\s*kb/s')
 BINARIES_SOURCES = {
     'linux': {
         'ffmpeg': {'url': 'https://github.com/imbecility/ffmpeg-ytdlp-minimal/releases/latest/download/ffmpeg-linux64', 'is_zipped': False},
+        'ffprobe': {'url': 'https://github.com/imbecility/ffmpeg-ytdlp-minimal/releases/latest/download/ffprobe-linux64', 'is_zipped': False},
         'bun': {'url': 'https://github.com/oven-sh/bun/releases/latest/download/bun-linux-x64.zip', 'is_zipped': True},
         'yt-dlp': {'url': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux', 'is_zipped': False},
     },
     'windows': {
         'ffmpeg': {'url': 'https://github.com/imbecility/ffmpeg-ytdlp-minimal/releases/latest/download/ffmpeg-win64.exe', 'is_zipped': False},
+        'ffprobe': {'url': 'https://github.com/imbecility/ffmpeg-ytdlp-minimal/releases/latest/download/ffprobe-win64.exe', 'is_zipped': False},
         'bun': {'url': 'https://github.com/oven-sh/bun/releases/latest/download/bun-windows-x64.zip', 'is_zipped': True},
         'yt-dlp': {'url': 'https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe', 'is_zipped': False},
     },
