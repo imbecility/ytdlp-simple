@@ -1,9 +1,10 @@
-from asyncio import gather
+from asyncio import gather, run, get_running_loop
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from re import match as re_match
 from threading import Thread, Event
+from typing import TypeVar
 from zipfile import ZipFile
 
 from ytdlp_simple.config import logger, BINARIES_SOURCES, BINARIES_UPDATE_DAYS_INTERVAL
@@ -13,7 +14,7 @@ from ytdlp_simple.downloader import fetch_json
 from ytdlp_simple.paths import is_writable_directory, LIB_DIR, user_data_dir, get_tmp
 
 BINARIES = BINARIES_SOURCES.get(os_name, {})
-
+T = TypeVar('T')
 
 def get_writable_bin_dir() -> Path:
     if is_writable_directory(LIB_DIR):
@@ -270,14 +271,37 @@ async def update_binaries_async(parallel: bool = False, force: bool = False) -> 
     return results
 
 
-def get_binaries_sync(parallel: bool = False):
-    from asyncio import run
-    run(get_binaries_async(parallel))
+def run_async(coro) -> T:
+    try:
+        get_running_loop()
+    except RuntimeError:
+        return run(coro)
+
+    result = None
+    exception = None
+
+    def thread_target():
+        nonlocal result, exception
+        try:
+            result = run(coro)
+        except BaseException as e:
+            exception = e
+
+    thread = Thread(target=thread_target)
+    thread.start()
+    thread.join()
+
+    if exception is not None:
+        raise exception
+    return result
 
 
-def update_binaries_sync(parallel: bool = False, force: bool = False):
-    from asyncio import run
-    run(update_binaries_async(parallel, force))
+def get_binaries_sync(parallel: bool = False) -> dict[str, bool]:
+    return run_async(get_binaries_async(parallel))
+
+
+def update_binaries_sync(parallel: bool = False, force: bool = False) -> dict[str, bool]:
+    return run_async(update_binaries_async(parallel, force))
 
 
 class BackgroundUpdater:
